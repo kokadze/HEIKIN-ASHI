@@ -1,0 +1,59 @@
+import ccxt
+import time
+
+# Въведете вашия API ключ и секретен ключ от борсата
+api_key = 'ваш_ключ'
+api_secret = 'ваш_секретен_ключ'
+
+# Създайте клиентски обект за взаимодействие с борсата (в този случай Binance)
+exchange = ccxt.binance({
+  'apiKey': api_key,
+  'secret': api_secret,
+  'enableRateLimit': True,
+})
+
+# Спецификация на търговския бот
+symbol = 'BTC/USDT'
+trade_amount = 0.001 # Количество за търговия
+has_bought = False # Флаг за проверка дали вече е извършена покупка
+
+# Основен цикъл на бота
+while True:
+  try:
+    # Вземете последните Heikin-Ashi свещи с времеви интервал 1 минута
+    candles = exchange.fetch_ohlcv(symbol, timeframe='1m', limit=2)
+    current_candle = candles[-1]
+    previous_candle = candles[-2]
+
+    # Проверка за първа зелена свещ и неизвършена покупка
+    if current_candle[4] > current_candle[1] and previous_candle[4] > previous_candle[1] and not has_bought:
+      # Извършете поръчка за покупка
+      buy_order = exchange.create_market_buy_order(symbol, trade_amount)
+      print(f"Buy order placed at {current_candle[4]} (closing price). Order details:", buy_order)
+      has_bought = True # Задайте флага за извършена покупка
+
+    # Проверка за първа червена свещ и неизвършена продажба
+    elif current_candle[4] < current_candle[1] and previous_candle[4] > previous_candle[1] and has_bought:
+      # Извършете поръчка за продажба
+      sell_order = exchange.create_market_sell_order(symbol, trade_amount)
+      print(f"Sell order placed at {current_candle[4]} (closing price). Order details:", sell_order)
+      has_bought = False # Нулирайте флага за извършена покупка
+
+    # Проверка за сигнал за завой на тренда
+    if current_candle[4] > current_candle[3] and current_candle[3] < current_candle[2] and current_candle[2] < current_candle[1]:
+      # Извършете поръчка за покупка
+      buy_order = exchange.create_market_buy_order(symbol, trade_amount)
+      print(f"Buy order placed at {current_candle[4]} (closing price). Order details:", buy_order)
+      has_bought = True # Задайте флага за извършена покупка
+
+    elif current_candle[4] < current_candle[3] and current_candle[3] > current_candle[2] and current_candle[2] > current_candle[1]:
+      # Извършете поръчка за продажба
+      sell_order = exchange.create_market_sell_order(symbol, trade_amount)
+      print(f"Sell order placed at {current_candle[4]} (closing price). Order details:", sell_order)
+      has_bought = False # Нулирайте флага за извършена покупка
+
+  except Exception as e:
+    print("Error in trading bot:", str(e))
+
+  # Изчакайте 1 минута преди следващата проверка
+  time.sleep(60
